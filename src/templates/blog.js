@@ -1,20 +1,9 @@
 import React from "react"
 import Layout from "../components/layout"
+import { BLOCKS } from "@contentful/rich-text-types"
+import { renderRichText } from "gatsby-source-contentful/rich-text"
 import { graphql } from "gatsby"
-import { documentToReactComponents } from "@contentful/rich-text-react-renderer"
 import Head from "../components/head"
-
-// export const query = graphql`
-//   query($slug: String!) {
-//     markdownRemark(fields: { slug: { eq: $slug } }) {
-//       frontmatter {
-//         title
-//         date
-//       }
-//       html
-//     }
-//   }
-// `
 
 export const query = graphql`
   query($slug: String!) {
@@ -23,6 +12,16 @@ export const query = graphql`
       publishedDate(formatString: "MMMM Do, YYYY")
       body {
         raw
+        references {
+          ... on ContentfulAsset {
+            __typename
+            contentful_id
+            title
+            fluid(maxWidth: 1000) {
+              src
+            }
+          }
+        }
       }
     }
   }
@@ -31,10 +30,14 @@ export const query = graphql`
 const Blog = props => {
   const options = {
     renderNode: {
-      "embedded-asset-block": node => {
-        const alt = node.data.target.fields.title["en-US"]
-        const url = node.data.target.fields.file["en-US"]
-        return <img alt={alt} src={url} />
+      [BLOCKS.EMBEDDED_ASSET]: node => {
+        // Extraindo os dados da query injetados pelo
+        const {
+          title,
+          fluid: { src },
+        } = node.data.target
+
+        return <img alt={title} src={src} />
       },
     },
   }
@@ -43,9 +46,7 @@ const Blog = props => {
       <Head title={props.data.contentfulBlogPost.title} />
       <h1>{props.data.contentfulBlogPost.title}</h1>
       <p>{props.data.contentfulBlogPost.publishedDate}</p>
-      {documentToReactComponents(
-        JSON.parse(props.data.contentfulBlogPost.body.raw, options)
-      )}
+      {renderRichText(props.data.contentfulBlogPost.content, options)}
     </Layout>
   )
 }
